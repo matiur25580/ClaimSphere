@@ -59,6 +59,21 @@ infrastructure/
 - Record sensitive state transitions in an auditable event history.
 - Prefer explicit, tested business rules over hidden automation.
 
+## Local development
+
+Requirements: Node.js 20.11+ and npm 10.2+.
+
+```bash
+cp .env.example .env
+docker compose up -d mongodb
+npm install
+npm run dev
+```
+
+The React app runs at http://localhost:5173 and the API runs at http://localhost:4000. The API health endpoint is http://localhost:4000/api/v1/health. The API currently expects MongoDB to be available before it starts.
+
+The dashboard currently uses illustrative demo data; it is not yet connected to claims APIs or a live insurance provider.
+
 ## Project status
 
 The repository is being developed incrementally. See [docs/ROADMAP.md](docs/ROADMAP.md) for milestones and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the initial system design.
