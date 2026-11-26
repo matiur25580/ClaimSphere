@@ -1,0 +1,3 @@
+import {Schema,model} from "mongoose";
+const schema=new Schema({name:{type:String,required:true,trim:true,maxlength:120},slug:{type:String,required:true,unique:true,lowercase:true,trim:true,match:/^[a-z0-9]+(?:-[a-z0-9]+)*$/},status:{type:String,enum:["active","suspended"],default:"active",required:true},createdBy:{type:Schema.Types.ObjectId,ref:"User",required:true}},{timestamps:true});
+export const Organization=model("Organization",schema);

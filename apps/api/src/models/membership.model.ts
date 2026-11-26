@@ -1,0 +1,4 @@
+import {Schema,model} from "mongoose";
+const schema=new Schema({userId:{type:Schema.Types.ObjectId,ref:"User",required:true,index:true},organizationId:{type:Schema.Types.ObjectId,ref:"Organization",required:true,index:true},role:{type:String,enum:["platform_admin","organization_admin","claims_manager","claims_adjuster","fraud_investigator","finance_officer","auditor","policyholder","repair_partner"],required:true,default:"organization_admin"},status:{type:String,enum:["active","suspended","revoked"],default:"active",required:true}},{timestamps:true});
+schema.index({userId:1,organizationId:1},{unique:true});
+export const Membership=model("Membership",schema);

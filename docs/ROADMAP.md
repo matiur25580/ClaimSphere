@@ -5,9 +5,10 @@
 - [x] Express API bootstrap, validated environment, MongoDB connection, health endpoint
 - [x] React operations dashboard shell with clearly marked demo data
 - [x] Docker Compose MongoDB development service
-- [ ] CI quality gates and automated tests
-- [ ] Enterprise authentication and session lifecycle
-- [ ] Organizations, memberships, invitations, and tenant isolation
+- [x] Enterprise authentication foundation: bcrypt credentials, short-lived access JWTs, refresh rotation and revocation
+- [x] Organization and membership foundation with tenant-derived request context and role authorization
+- [ ] CI quality gates and automated integration tests
+- [ ] Organization invitations and membership administration
 - [ ] Customer and policy management
 - [ ] FNOL and claims lifecycle
 - [ ] Evidence upload and document metadata
@@ -21,5 +22,4 @@
 - [ ] Production hardening, observability, backup, and deployment
 
 ## Milestone acceptance policy
-
-A milestone is complete only when documented behavior exists in code, authorization and validation are implemented, tests cover important success and failure paths, and README/API documentation is updated. Roadmap checkboxes must not be treated as proof of implementation by themselves.
+A milestone is complete only when documented behavior exists in code, authorization and validation are implemented, tests cover important success and failure paths, and README/API documentation is updated. Roadmap checkboxes are not proof of implementation by themselves.

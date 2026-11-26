@@ -1,0 +1,10 @@
+import {Router,type Request,type Response,type RequestHandler} from "express";
+import {z} from "zod";
+import {authenticate,requireRoles} from "../middleware/auth.middleware.js";
+import {Membership} from "../models/membership.model.js";
+import {Organization} from "../models/organization.model.js";
+export const organizationRouter=Router();
+const asyncRoute=(fn:(req:Request,res:Response)=>Promise<void>):RequestHandler=>(req,res,next)=>{void fn(req,res).catch(next);};
+organizationRouter.use(authenticate);
+organizationRouter.get("/",asyncRoute(async(req,res)=>{const rows=await Membership.find({userId:req.auth!.userId,status:"active"}).populate("organizationId","name slug status");const organizations=rows.filter(m=>(m.organizationId as unknown as {status:string}).status==="active").map(m=>{const o=m.organizationId as unknown as {id:string;name:string;slug:string};return{id:o.id,name:o.name,slug:o.slug,role:m.role};});res.json({data:{organizations}});}));
+organizationRouter.post("/",requireRoles("organization_admin","platform_admin"),asyncRoute(async(req,res)=>{const p=z.object({name:z.string().trim().min(2).max(120),slug:z.string().trim().min(3).max(63).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)}).safeParse(req.body);if(!p.success){res.status(400).json({error:{code:"VALIDATION_ERROR",message:"Organization details are invalid.",details:p.error.flatten().fieldErrors}});return;}const org=await Organization.create({...p.data,createdBy:req.auth!.userId});const membership=await Membership.create({userId:req.auth!.userId,organizationId:org._id,role:"organization_admin"});res.status(201).json({data:{organization:{id:org.id,name:org.name,slug:org.slug},role:membership.role}});}));

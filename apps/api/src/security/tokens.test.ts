@@ -1,0 +1,3 @@
+import {describe,expect,it} from "vitest";
+import {createRefreshToken,hashRefreshToken,parseRefreshToken} from "./tokens.js";
+describe("refresh token utilities",()=>{it("creates a parseable opaque token",()=>{const id="507f1f77bcf86cd799439011";const token=createRefreshToken(id);expect(parseRefreshToken(token)).toEqual({sessionId:id});expect(token.split(".")[1]).toHaveLength(64);});it("hashes deterministically without exposing the raw token",()=>{const token=createRefreshToken("507f1f77bcf86cd799439011");expect(hashRefreshToken(token)).toBe(hashRefreshToken(token));expect(hashRefreshToken(token)).not.toBe(token);});it("rejects malformed tokens",()=>{expect(parseRefreshToken("bad")).toBeNull();expect(parseRefreshToken("507f1f77bcf86cd799439011.short")).toBeNull();});});

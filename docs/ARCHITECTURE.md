@@ -1,19 +1,15 @@
 # Architecture Overview
 
-## Initial deployment shape
-
-ClaimSphere starts as a modular monolith: one Express API organized around bounded business modules, one React client, and MongoDB as the primary datastore. This keeps early delivery understandable while preserving clear module boundaries for future extraction when scale and operational evidence justify it.
+ClaimSphere uses a modular-monolith architecture: a React client, Express API, and MongoDB persistence with bounded modules.
 
 ## Trust boundaries
-
 - The browser is untrusted. All input is validated by the API.
 - Authentication identifies a principal; authorization separately checks organization membership, role, and resource access.
-- Tenant context must be derived from authenticated membership, never accepted as authority from request payloads.
-- Uploaded files are stored outside MongoDB. Database records retain metadata, ownership, checksums, and storage references.
-- AI output is untrusted data and must be schema-validated and reviewed before it can influence a claim workflow.
+- Tenant context is derived from authenticated membership, never trusted from request payloads.
+- Uploaded files are stored outside MongoDB; database records retain metadata, ownership, checksums, and storage references.
+- AI output is untrusted data and must be schema-validated and reviewed before it influences a claim workflow.
 
 ## Core domain boundaries
-
 - Identity & Organizations: users, organizations, memberships, invitations, sessions.
 - Policyholders & Policies: customer identity, policy lifecycle, coverage and deductible rules.
 - Claims: FNOL, claim lifecycle, assignments, reserves, and status transitions.
@@ -24,19 +20,17 @@ ClaimSphere starts as a modular monolith: one Express API organized around bound
 - Settlement: approved amounts, payment instructions, reconciliation, and recovery.
 - Audit & Analytics: append-only business events, operational metrics, and reporting.
 
-## API conventions
+## Authentication and tenant security
+- Passwords are hashed with bcrypt; plaintext passwords are never persisted.
+- Access tokens are short-lived JWTs. Refresh tokens are opaque, stored only as SHA-256 hashes, and delivered in HttpOnly cookies.
+- Refresh rotation revokes the previous token. Reuse of a revoked token revokes its complete token family.
+- Each authenticated request checks the active user, organization, membership, and session against MongoDB.
+- Organization scope and role are derived from the verified membership. Client-supplied organization IDs never grant access.
+- Memberships have a unique user/organization compound index and organization slugs are globally unique.
+- Production must use a unique JWT_ACCESS_SECRET, HTTPS, and a shared rate-limit store when horizontally scaled.
 
-- Versioned routes under /api/v1.
-- Success envelope: { data }; error envelope: { error: { code, message } }.
+## API conventions
+- Versioned routes under /api/v1; success envelope { data }; error envelope { error: { code, message } }.
 - Validate request bodies, parameters, and query strings at module boundaries.
 - Use stable machine-readable error codes and pagination for collections.
-- Use idempotency keys for externally retried financial or state-changing operations.
-
-## Security principles
-
-- Every tenant-owned document carries an organization identifier and is queried with tenant scope.
-- Tenant-specific unique indexes include the organization identifier.
-- Critical transitions use transactions where supported and emit audit events.
-- Sensitive evidence access uses short-lived signed URLs and explicit authorization.
-- Secrets are injected through environment configuration and never committed.
 - Logs must avoid credentials, tokens, document contents, and unnecessary personal data.
