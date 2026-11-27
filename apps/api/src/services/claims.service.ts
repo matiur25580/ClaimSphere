@@ -112,6 +112,17 @@ export async function transitionClaim(org: string, actor: string, role: string, 
       if (!claim) fail(404, "CLAIM_NOT_FOUND", "The claim was not found in this organization.");
       const fromStatus = claim.status;
       if (!canTransitionClaim(fromStatus, toStatus)) fail(409, "INVALID_CLAIM_TRANSITION", `A claim cannot move from ${fromStatus} to ${toStatus}.`);
+      const allowedRoles: Record<ClaimStatus, readonly string[]> = {
+        submitted: [], triage: ["organization_admin", "claims_manager"],
+        under_review: ["organization_admin", "claims_manager", "claims_adjuster", "fraud_investigator"],
+        awaiting_documents: ["organization_admin", "claims_manager", "claims_adjuster"],
+        investigation: ["organization_admin", "claims_manager", "claims_adjuster", "fraud_investigator"],
+        approved: ["organization_admin", "claims_manager", "finance_officer"],
+        rejected: ["organization_admin", "claims_manager", "finance_officer"],
+        settled: ["organization_admin", "finance_officer"],
+        closed: ["organization_admin", "claims_manager", "finance_officer"]
+      };
+      if (!allowedRoles[toStatus]?.includes(role)) fail(403, "CLAIM_TRANSITION_PERMISSION_REQUIRED", "Your organization role cannot perform this claim transition.");
       if (["approved", "rejected"].includes(toStatus)) {
         if (!["organization_admin", "claims_manager", "finance_officer"].includes(role)) fail(403, "CLAIM_DECISION_PERMISSION_REQUIRED", "Only an authorized claims or finance reviewer can decide this claim.");
         if (String(claim.createdBy) === actor) fail(403, "SELF_REVIEW_BLOCKED", "The claim creator cannot approve or reject their own claim.");
