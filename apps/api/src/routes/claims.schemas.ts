@@ -38,7 +38,7 @@ export const claimTransitionSchema=z.object({
  toStatus:z.enum(["triage","under_review","awaiting_documents","investigation","approved","rejected","closed"]),
  note:z.string().trim().max(2000).optional().default("")
 }).strict().superRefine((v,ctx)=>{
- if(v.toStatus==="rejected"&&v.note.length<5)ctx.addIssue({code:"custom",path:["note"],message:"A rejection reason is required."});
+ if(["approved","rejected"].includes(v.toStatus)&&v.note.length<5)ctx.addIssue({code:"custom",path:["note"],message:"An approval or rejection rationale is required."});
 });
 export const assignClaimSchema=z.object({adjusterUserId:objectId}).strict();
 export const evidenceSchema=z.object({
