@@ -6,6 +6,7 @@ import { ClaimEvent } from "../models/claim-event.model.js";
 import { Membership } from "../models/membership.model.js";
 import { Policy } from "../models/policy.model.js";
 import { canRoleTransition, canTransitionClaim, isEvidenceMetadataSafe, isLossCovered } from "./claims.rules.js";
+type ClaimStatus = "submitted" | "triage" | "under_review" | "awaiting_documents" | "investigation" | "approved" | "rejected" | "settled" | "closed";
 
 export class ClaimsError extends Error {
   status: number; code: string;
