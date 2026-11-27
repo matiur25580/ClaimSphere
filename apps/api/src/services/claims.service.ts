@@ -7,7 +7,7 @@ import { Membership } from "../models/membership.model.js";
 import { Policy } from "../models/policy.model.js";
 import { canTransitionClaim, isEvidenceMetadataSafe, isLossCovered } from "./claims.rules.js";
 
-type Meta = { ipAddress?: string; userAgent?: string };
+type ClaimStatus = "submitted" | "triage" | "under_review" | "awaiting_documents" | "investigation" | "approved" | "rejected" | "settled" | "closed";
 export class ClaimsError extends Error {
   status: number; code: string;
   constructor(status: number, code: string, message: string) { super(message); this.status = status; this.code = code; }
@@ -35,7 +35,7 @@ export async function createPolicy(org: string, actor: string, input: {
   return Policy.create({ ...input, organizationId: org, policyNumber: input.policyNumber.toUpperCase(), currency: input.currency.toUpperCase(), effectiveAt, expiresAt, status, createdBy: actor, updatedBy: actor });
 }
 
-export async function listPolicies(org: string, actor: string, role: string, filters: { status?: string; page: number; limit: number }) {
+export async function listPolicies(org: string, actor: string, role: string, filters: { status?: string | undefined; page: number; limit: number }) {
   const query: Record<string, unknown> = { organizationId: org };
   if (role === "policyholder") query.policyholderUserId = actor;
   if (filters.status) query.status = filters.status;
@@ -76,7 +76,7 @@ export async function createClaim(org: string, actor: string, role: string, inpu
   return getClaim(org, String(claimId), actor, role);
 }
 
-export async function listClaims(org: string, actor: string, role: string, filters: { status?: string; severity?: string; page: number; limit: number }) {
+export async function listClaims(org: string, actor: string, role: string, filters: { status?: string | undefined; severity?: string | undefined; page: number; limit: number }) {
   const query: Record<string, unknown> = { organizationId: org };
   if (role === "policyholder") query.policyholderUserId = actor;
   if (filters.status) query.status = filters.status;
@@ -103,7 +103,7 @@ export async function getClaim(org: string, id: string, actor: string, role: str
   return { claim, evidence, events };
 }
 
-export async function transitionClaim(org: string, actor: string, role: string, id: string, toStatus: string, note = "") {
+export async function transitionClaim(org: string, actor: string, role: string, id: string, toStatus: ClaimStatus, note = "") {
   if (!validId(id)) fail(400, "INVALID_CLAIM_ID", "A valid claim identifier is required.");
   const session = await mongoose.startSession();
   try {
