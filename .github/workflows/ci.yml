@@ -10,6 +10,20 @@ jobs:
   validate:
     name: Validate workspace
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      MONGODB_URI: mongodb://127.0.0.1:27017/claimsphere_ci
+      JWT_ACCESS_SECRET: ci-only-secret-that-is-at-least-32-characters-long
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,7 +33,9 @@ jobs:
         run: npm install
       - name: Typecheck
         run: npm run typecheck
-      - name: Unit tests
+      - name: Unit and integration tests
         run: npm run test
+      - name: Dependency security audit
+        run: npm audit --omit=dev --audit-level=high
       - name: Build
         run: npm run build
