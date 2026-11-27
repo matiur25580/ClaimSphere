@@ -1,6 +1,6 @@
 import {useEffect,useState,type FormEvent} from "react";
 import {ClaimsWorkspace} from "./ClaimsWorkspace";
-import {Activity,ArrowUpRight,Bell,BriefcaseBusiness,ChartNoAxesCombined,ChevronDown,Clock3,FileCheck2,FilePlus2,LockKeyhole,LogOut,Mail,ShieldCheck,Users} from "lucide-react";
+import {Activity,ArrowUpRight,Bell,BriefcaseBusiness,ChartNoAxesCombined,ChevronDown,FileCheck2,FilePlus2,LockKeyhole,LogOut,Mail,ShieldCheck,Users} from "lucide-react";
 
 const API_URL=(import.meta.env.VITE_API_URL??"http://localhost:4000/api/v1").replace(/\/$/,"");
 type Profile={user:{id:string;email:string;firstName:string;lastName:string};organization:{id:string;name:string;slug:string};role:string};
