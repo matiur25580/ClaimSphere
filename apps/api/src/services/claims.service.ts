@@ -142,15 +142,20 @@ export async function transitionClaim(org: string, actor: string, role: string, 
 
 export async function assignClaim(org: string, actor: string, id: string, adjusterUserId: string) {
   if (!validId(id) || !validId(adjusterUserId)) fail(400, "INVALID_CLAIM_ASSIGNMENT", "Valid claim and adjuster identifiers are required.");
-  const adjuster = await Membership.findOne({ userId: adjusterUserId, organizationId: org, status: "active", role: "claims_adjuster" }).select("_id");
-  if (!adjuster) fail(400, "ADJUSTER_MEMBERSHIP_REQUIRED", "The adjuster must have an active claims-adjuster membership in this organization.");
-  const claim = await Claim.findOne({ _id: id, organizationId: org, status: { $nin: ["closed", "rejected", "settled"] } });
-  if (!claim) fail(404, "CLAIM_NOT_ASSIGNABLE", "The claim was not found or is no longer assignable.");
-  const previous = claim.assignedAdjusterId ? String(claim.assignedAdjusterId) : null;
-  claim.assignedAdjusterId = new Types.ObjectId(adjusterUserId);
-  claim.updatedBy = new Types.ObjectId(actor);
-  await claim.save();
-  await appendEvent({ organizationId: org, claimId: id, actorId: actor, action: "claim_assigned", metadata: { previousAdjusterId: previous, adjusterUserId } });
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const adjuster = await Membership.findOne({ userId: adjusterUserId, organizationId: org, status: "active", role: "claims_adjuster" }).select("_id").session(session);
+      if (!adjuster) fail(400, "ADJUSTER_MEMBERSHIP_REQUIRED", "The adjuster must have an active claims-adjuster membership in this organization.");
+      const claim = await Claim.findOne({ _id: id, organizationId: org, status: { $nin: ["closed", "rejected", "settled"] } }).session(session);
+      if (!claim) fail(404, "CLAIM_NOT_ASSIGNABLE", "The claim was not found or is no longer assignable.");
+      const previous = claim.assignedAdjusterId ? String(claim.assignedAdjusterId) : null;
+      claim.assignedAdjusterId = new Types.ObjectId(adjusterUserId);
+      claim.updatedBy = new Types.ObjectId(actor);
+      await claim.save({ session });
+      await appendEvent({ organizationId: org, claimId: id, actorId: actor, action: "claim_assigned", metadata: { previousAdjusterId: previous, adjusterUserId } }, session);
+    });
+  } finally { await session.endSession(); }
   return getClaim(org, id, actor, "claims_manager");
 }
 
@@ -159,41 +164,60 @@ export async function addClaimEvidence(org: string, actor: string, role: string,
 }) {
   if (!validId(id)) fail(400, "INVALID_CLAIM_ID", "A valid claim identifier is required.");
   if (!isEvidenceMetadataSafe(input)) fail(400, "UNSAFE_EVIDENCE_METADATA", "Evidence metadata must include a SHA-256 checksum, opaque storage reference and a file size up to 25 MB.");
-  const claim = await Claim.findOne({ _id: id, organizationId: org, status: { $ne: "closed" }, ...(role === "policyholder" ? { policyholderUserId: actor } : {}) });
-  if (!claim) fail(404, "CLAIM_NOT_FOUND", "The claim was not found or is not available for evidence submission.");
-  const evidence = await ClaimEvidence.create({ ...input, organizationId: org, claimId: id, uploadedBy: actor });
-  await appendEvent({ organizationId: org, claimId: id, actorId: actor, action: "claim_evidence_metadata_added", metadata: { evidenceId: evidence.id, category: input.category, sizeBytes: input.sizeBytes } });
-  return evidence;
+  const session = await mongoose.startSession();
+  let evidenceId: Types.ObjectId | undefined;
+  try {
+    await session.withTransaction(async () => {
+      const claim = await Claim.findOne({ _id: id, organizationId: org, status: { $nin: ["closed", "rejected", "settled"] }, ...(role === "policyholder" ? { policyholderUserId: actor } : {}) }).session(session);
+      if (!claim) fail(404, "CLAIM_NOT_FOUND", "The claim was not found or is not available for evidence submission.");
+      const [evidence] = await ClaimEvidence.create([{ ...input, organizationId: org, claimId: id, uploadedBy: actor }], { session });
+      if (!evidence) fail(500, "EVIDENCE_CREATE_FAILED", "Evidence metadata could not be registered.");
+      evidenceId = evidence._id;
+      await appendEvent({ organizationId: org, claimId: id, actorId: actor, action: "claim_evidence_metadata_added", metadata: { evidenceId: evidence.id, category: input.category, sizeBytes: input.sizeBytes } }, session);
+    });
+  } finally { await session.endSession(); }
+  if (!evidenceId) fail(500, "EVIDENCE_CREATE_FAILED", "Evidence metadata could not be registered.");
+  return ClaimEvidence.findOne({ _id: evidenceId, organizationId: org }).lean();
 }
 
 export async function reviewClaimEvidence(org: string, actor: string, claimId: string, evidenceId: string, status: "accepted" | "rejected", note: string) {
   if (!validId(claimId) || !validId(evidenceId)) fail(400, "INVALID_EVIDENCE_ID", "Valid claim and evidence identifiers are required.");
-  const evidence = await ClaimEvidence.findOne({ _id: evidenceId, claimId, organizationId: org, status: "pending_review" });
-  if (!evidence) fail(404, "EVIDENCE_NOT_FOUND", "Pending evidence metadata was not found in this organization.");
   if (status === "rejected" && note.trim().length < 5) fail(400, "EVIDENCE_REJECTION_REASON_REQUIRED", "A reason is required to reject evidence.");
-  evidence.status = status;
-  evidence.reviewedBy = new Types.ObjectId(actor);
-  evidence.reviewedAt = new Date();
-  evidence.reviewNote = note;
-  await evidence.save();
-  await appendEvent({ organizationId: org, claimId, actorId: actor, action: "claim_evidence_reviewed", metadata: { evidenceId, status, note } });
-  return evidence;
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const evidence = await ClaimEvidence.findOne({ _id: evidenceId, claimId, organizationId: org, status: "pending_review" }).session(session);
+      if (!evidence) fail(404, "EVIDENCE_NOT_FOUND", "Pending evidence metadata was not found in this organization.");
+      evidence.status = status;
+      evidence.reviewedBy = new Types.ObjectId(actor);
+      evidence.reviewedAt = new Date();
+      evidence.reviewNote = note;
+      await evidence.save({ session });
+      await appendEvent({ organizationId: org, claimId, actorId: actor, action: "claim_evidence_reviewed", metadata: { evidenceId, status, note } }, session);
+    });
+  } finally { await session.endSession(); }
+  return ClaimEvidence.findOne({ _id: evidenceId, claimId, organizationId: org }).lean();
 }
 
 export async function settleClaim(org: string, actor: string, id: string, settlementAmountMinor: number, note: string) {
   if (!validId(id)) fail(400, "INVALID_CLAIM_ID", "A valid claim identifier is required.");
-  const claim = await Claim.findOne({ _id: id, organizationId: org, status: "approved" });
-  if (!claim) fail(409, "CLAIM_NOT_APPROVED", "Only an approved claim can be settled.");
-  const policy = await Policy.findOne({ _id: claim.policyId, organizationId: org }).select("coverageLimitMinor currency");
-  if (!policy || policy.currency !== claim.currency || settlementAmountMinor > policy.coverageLimitMinor) fail(400, "SETTLEMENT_LIMIT_EXCEEDED", "Settlement must use the policy currency and cannot exceed its coverage limit.");
   if (!Number.isSafeInteger(settlementAmountMinor) || settlementAmountMinor < 0) fail(400, "INVALID_SETTLEMENT_AMOUNT", "Settlement amount must be a non-negative integer in minor currency units.");
-  claim.status = "settled";
-  claim.settlementAmountMinor = settlementAmountMinor;
-  claim.settledAt = new Date();
-  claim.decision = note;
-  claim.updatedBy = new Types.ObjectId(actor);
-  await claim.save();
-  await appendEvent({ organizationId: org, claimId: id, actorId: actor, action: "claim_settled", fromStatus: "approved", toStatus: "settled", metadata: { settlementAmountMinor, currency: claim.currency, note } });
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const claim = await Claim.findOne({ _id: id, organizationId: org, status: "approved" }).session(session);
+      if (!claim) fail(409, "CLAIM_NOT_APPROVED", "Only an approved claim can be settled.");
+      const policy = await Policy.findOne({ _id: claim.policyId, organizationId: org }).select("coverageLimitMinor currency").session(session);
+      if (!policy || policy.currency !== claim.currency || settlementAmountMinor > policy.coverageLimitMinor) fail(400, "SETTLEMENT_LIMIT_EXCEEDED", "Settlement must use the policy currency and cannot exceed its coverage limit.");
+      claim.status = "settled";
+      claim.settlementAmountMinor = settlementAmountMinor;
+      claim.settledAt = new Date();
+      claim.decision = note;
+      claim.updatedBy = new Types.ObjectId(actor);
+      await claim.save({ session });
+      await appendEvent({ organizationId: org, claimId: id, actorId: actor, action: "claim_settled", fromStatus: "approved", toStatus: "settled", metadata: { settlementAmountMinor, currency: claim.currency, note } }, session);
+    });
+  } finally { await session.endSession(); }
   return getClaim(org, id, actor, "finance_officer");
 }
 
