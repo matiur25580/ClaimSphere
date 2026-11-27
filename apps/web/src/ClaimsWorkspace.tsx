@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AlertTriangle, ArrowUpRight, FilePlus2, RefreshCw } from "lucide-react";
+import "./claims-workspace.css";
 
 type Policy={_id:string;policyNumber:string;productLine:string;currency:string;coverageLimitMinor:number;status:string};
 type Claim={_id:string;claimNumber:string;policyId:Policy|string;lossType:string;severity:string;status:string;estimatedLossMinor:number;currency:string;reportedAt:string};
