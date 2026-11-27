@@ -17,7 +17,8 @@ This milestone introduces the first operational insurance domain APIs under `/ap
 - Loss dates cannot be in the future.
 - Estimated loss is stored as integer minor currency units, must use the policy currency, and cannot exceed the policy coverage limit.
 - Claims start in `submitted` and receive a collision-resistant claim number.
-- Claim status changes are checked against a finite transition map and recorded as actor-attributed events.
+- Claim status changes are checked against a finite transition map and role-specific permissions, then recorded as actor-attributed events.
+- Claim creation, status transitions, assignment, evidence registration/review and settlement commit together with their corresponding audit event in a MongoDB transaction.
 - Claim creators cannot approve/reject their own claims.
 - Claims managers/admins can assign only active tenant members with the claims-adjuster role.
 - Finance officers/admins can settle only approved claims and settlement cannot exceed the policy coverage limit.
@@ -65,7 +66,7 @@ under_review / investigation -> rejected -> closed
 
 ## Known limitations and next hardening
 
-- Claim events are appended through the API but business writes and event writes are not all transactionally coupled. Introduce an outbox and tamper-evident audit store before production.
+- MongoDB transactions keep claim mutations and their event records atomic; deploy on a replica set. A tamper-evident external audit export and outbox are still recommended for production.
 - Evidence metadata is not an upload mechanism. Add private object storage, server-side checksum/MIME verification, malware scanning, retention and authorized downloads.
 - Policyholder onboarding/invitations, policy endorsements, renewals, claims SLA scheduling, notifications, inspection assignments and document extraction are future milestones.
 - No fraud score or AI decision is generated. Any future risk signals must be explainable and reviewed by an authorized human.
