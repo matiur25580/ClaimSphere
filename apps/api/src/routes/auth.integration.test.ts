@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
-import request,{type SuperAgentTest} from "supertest";
+import request from "supertest";
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from "vitest";
 import type {Express} from "express";
 
 let app:Express;
-let agent:SuperAgentTest;
+let agent:ReturnType<typeof request.agent>;
 const registration={email:"claims.admin@example.com",password:"correct-horse-battery-42",firstName:"Alex",lastName:"Morgan",organizationName:"Northstar Assurance",organizationSlug:"northstar-assurance"};
 
 beforeAll(async()=>{process.env.NODE_ENV="test";process.env.MONGODB_URI??="mongodb://127.0.0.1:27017/claimsphere_test";process.env.JWT_ACCESS_SECRET??="integration-test-secret-that-is-at-least-32-characters";({app}=await import("../app.js"));await mongoose.connect(process.env.MONGODB_URI);await Promise.all(Object.values(mongoose.connection.models).map(model=>model.init()));});
