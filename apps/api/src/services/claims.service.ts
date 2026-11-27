@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import mongoose, { Types } from "mongoose";
 import { Claim } from "../models/claim.model.js";
 import { ClaimEvidence } from "../models/claim-evidence.model.js";
@@ -13,7 +14,7 @@ export class ClaimsError extends Error {
 }
 function fail(status: number, code: string, message: string): never { throw new ClaimsError(status, code, message); }
 const validId = (value: string) => Types.ObjectId.isValid(value);
-const claimNumber = () => "CLM-" + new Date().toISOString().slice(0,10).replaceAll("-","") + "-" + Math.random().toString(36).slice(2,8).toUpperCase();
+const claimNumber = () => "CLM-" + new Date().toISOString().slice(0,10).replaceAll("-","") + "-" + randomBytes(4).toString("hex").toUpperCase();
 async function appendEvent(input: { organizationId: string; claimId: string; actorId: string; action: string; fromStatus?: string | null; toStatus?: string | null; metadata?: Record<string, unknown> }, session?: mongoose.ClientSession) {
   const payload = { ...input, ...(input.fromStatus !== undefined ? { fromStatus: input.fromStatus } : {}), ...(input.toStatus !== undefined ? { toStatus: input.toStatus } : {}) };
   if (session) await ClaimEvent.create([payload], { session });
@@ -52,6 +53,7 @@ export async function createClaim(org: string, actor: string, role: string, inpu
   const policy = await Policy.findOne({ _id: input.policyId, organizationId: org }).lean();
   if (!policy) fail(404, "POLICY_NOT_FOUND", "The policy was not found in this organization.");
   if (role === "policyholder" && String(policy.policyholderUserId) !== actor) fail(403, "POLICYHOLDER_ACCESS_DENIED", "You can only report a loss against your own policy.");
+  if (new Date(input.lossDate) > new Date()) fail(400, "FUTURE_LOSS_DATE", "The date of loss cannot be in the future.");
   if (!isLossCovered(policy.status, policy.effectiveAt, policy.expiresAt, input.lossDate)) fail(409, "POLICY_NOT_IN_FORCE", "The policy must be active and the loss date must fall within its effective coverage period.");
   if (input.estimatedLossMinor > policy.coverageLimitMinor) fail(400, "ESTIMATE_EXCEEDS_COVERAGE", "The estimated loss cannot exceed the policy coverage limit.");
   const session = await mongoose.startSession();
