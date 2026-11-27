@@ -25,3 +25,14 @@ describe("evidence metadata safety",()=>{
   expect(isEvidenceMetadataSafe({sizeBytes:1024,sha256:"a".repeat(64),storageRef:"../../etc/passwd"})).toBe(false);
  });
 });
+
+describe("claim transition authorization",()=> {
+ it("limits each workflow action to the responsible role groups",()=> {
+  expect(canRoleTransition("claims_manager","triage")).toBe(true);
+  expect(canRoleTransition("policyholder","triage")).toBe(false);
+  expect(canRoleTransition("fraud_investigator","investigation")).toBe(true);
+  expect(canRoleTransition("claims_adjuster","approved")).toBe(false);
+  expect(canRoleTransition("finance_officer","approved")).toBe(true);
+  expect(canRoleTransition("auditor","closed")).toBe(false);
+ });
+});
