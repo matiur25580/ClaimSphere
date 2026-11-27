@@ -7,7 +7,8 @@
 - [x] Docker Compose MongoDB development service
 - [x] Enterprise authentication foundation: bcrypt credentials, short-lived access JWTs, refresh rotation and revocation
 - [x] Organization and membership foundation with tenant-derived request context and role authorization
-- [ ] CI quality gates and automated integration tests
+- [x] Browser registration/login and authenticated session lifecycle
+- [x] MongoDB-backed authentication integration tests and production dependency audit gate
 - [ ] Organization invitations and membership administration
 - [ ] Customer and policy management
 - [ ] FNOL and claims lifecycle
