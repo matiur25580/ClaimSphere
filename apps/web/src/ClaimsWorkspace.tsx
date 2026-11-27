@@ -39,7 +39,7 @@ export function ClaimsWorkspace({accessToken,role}:{accessToken:string;role:stri
   finally{setBusy(false);}
  }
  const count=(status:string)=>claims.filter(c=>c.status===status).length;
- return <section className="claims-live">
+ return <section className="claims-live" id="claims-live">
   <div className="live-heading"><div><span className="eyebrow">LIVE CLAIMS OPERATIONS</span><h2>Claims intake & triage</h2><p>Real tenant data from the policy and claims APIs. No sample claims are mixed into this queue.</p></div><button className="live-refresh" onClick={()=>void refresh()}><RefreshCw size={15}/> Refresh</button></div>
   {error&&<div className="live-alert error" role="alert">{error}</div>}{notice&&<div className="live-alert success" role="status">{notice}</div>}
   <div className="live-metrics">
