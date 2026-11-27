@@ -2,3 +2,5 @@ export type ClaimStatus = "draft" | "submitted" | "triage" | "under_review" | "i
 export type UserRole = "platform_admin" | "organization_admin" | "claims_manager" | "claims_adjuster" | "fraud_investigator" | "finance_officer" | "auditor" | "policyholder" | "repair_partner";
 export interface ApiSuccess<T> { data: T; }
 export interface ApiFailure { error: { code: string; message: string; requestId?: string }; }
+export interface AuthenticatedPrincipal { userId:string; organizationId:string; role:UserRole; sessionId:string; }
+export interface OrganizationSummary { id:string; name:string; slug:string; role:UserRole; }

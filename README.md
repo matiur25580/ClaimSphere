@@ -2,82 +2,50 @@
 
 **AI-assisted Enterprise Insurance Claims Intelligence & Automation Platform**
 
-ClaimSphere is a multi-tenant insurance operations platform designed to coordinate the complete claims lifecycle: first notice of loss (FNOL), policy and coverage validation, evidence collection, adjuster assignment, investigation, approvals, settlement, and recovery.
+ClaimSphere is a multi-tenant insurance operations platform for the complete claims lifecycle: FNOL, policy and coverage validation, evidence collection, adjuster assignment, investigation, approvals, settlement, and recovery. Consequential claim decisions remain with authorized human reviewers.
 
-The platform is built with the MERN stack and TypeScript. AI capabilities are designed as decision-support tools: consequential claim decisions remain with authorized human reviewers.
+## Implemented capabilities
+- TypeScript npm-workspaces monorepo with React, Express, and shared contracts.
+- MongoDB-backed user, organization, membership, and refresh-session models.
+- bcrypt password hashing and validated registration/login endpoints.
+- Short-lived access JWTs and HttpOnly refresh cookies with rotation and token-family reuse revocation.
+- Per-request checks for active user, organization, membership, and session.
+- Role-aware API middleware and authenticated organization listing/creation.
+- Browser registration/login, automatic refresh on reload, authenticated session display, and logout.
+- MongoDB-backed authentication integration tests in CI, workspace typecheck/build, and production dependency audit.
 
-## Product goals
-
-- Give policyholders a transparent, accessible claims experience.
-- Help claims teams coordinate work, evidence, deadlines, and approvals.
-- Give investigators explainable signals for prioritizing suspicious cases.
-- Give managers operational visibility into workload, service levels, and exposure.
-- Provide strong tenant isolation, authorization, and auditable business events.
-
-## Planned capabilities
-
-1. Enterprise identity, organizations, memberships, and tenant-aware authorization.
-2. Customer, policy, coverage, and claims records.
-3. FNOL intake and secure evidence/document handling.
-4. Adjuster assignment, inspections, and damage assessments.
-5. Configurable workflows, approvals, escalations, and SLA tracking.
-6. Explainable fraud indicators and investigation case management.
-7. Settlement, reconciliation, and recovery tracking.
-8. Operational analytics, real-time notifications, and catastrophe response.
-9. AI-assisted document extraction with human verification.
-10. Audit, governance, observability, and production deployment.
-
-## Technology direction
-
-- **Frontend:** React, TypeScript, Vite, Tailwind CSS
-- **Backend:** Node.js, Express, TypeScript
-- **Database:** MongoDB, Mongoose
-- **Async processing:** Redis and BullMQ (introduced in later milestones)
-- **Realtime:** Socket.IO (introduced in later milestones)
-- **Testing:** Vitest, Supertest, and Playwright (as modules mature)
-- **Delivery:** Docker and GitHub Actions
-
-## Repository layout
-
-```text
-apps/
-  web/       React application
-  api/       Express API
-packages/
-  shared/    Shared contracts and utilities
-docs/        Architecture and product documentation
-infrastructure/
-```
-
-## Development principles
-
-- Secure-by-default authorization and tenant scoping.
-- Validate all external input at system boundaries.
-- Keep domain logic out of HTTP controllers.
-- Never trust client-provided organization identifiers without membership checks.
-- Treat AI output as untrusted, reviewable suggestions.
-- Record sensitive state transitions in an auditable event history.
-- Prefer explicit, tested business rules over hidden automation.
+## Technology
+- Frontend: React, TypeScript, Vite
+- Backend: Node.js, Express, TypeScript
+- Database: MongoDB, Mongoose
+- Testing: Vitest and Supertest with MongoDB service in CI
+- Delivery: Docker and GitHub Actions
 
 ## Local development
+Requirements: Node.js 20.11+, npm 10.2+, and Docker.
 
-Requirements: Node.js 20.11+ and npm 10.2+.
+    cp .env.example .env
+    docker compose up -d mongodb
+    npm install
+    npm run dev
 
-```bash
-cp .env.example .env
-docker compose up -d mongodb
-npm install
-npm run dev
-```
+The React app runs at http://localhost:5173 and the API at http://localhost:4000.
 
-The React app runs at http://localhost:5173 and the API runs at http://localhost:4000. The API health endpoint is http://localhost:4000/api/v1/health. The API currently expects MongoDB to be available before it starts.
+## Authentication API
+All endpoints are under /api/v1.
 
-The dashboard currently uses illustrative demo data; it is not yet connected to claims APIs or a live insurance provider.
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| POST | /auth/register | Create user, organization, owner membership, and session |
+| POST | /auth/login | Authenticate and select an active organization |
+| POST | /auth/refresh | Rotate HttpOnly refresh cookie and issue a new access token |
+| POST | /auth/logout | Revoke the current refresh-token family |
+| GET | /auth/me | Return authenticated principal and active organization |
+| GET | /organizations | List active organization memberships |
+| POST | /organizations | Create an organization (organization admin only) |
 
-## Project status
+Registration requires a valid email, password of at least 12 characters, first/last name, and organization name. Send access tokens using Authorization: Bearer. Browser refresh/logout calls include credentials. Refresh cookies are HttpOnly, SameSite=Lax, scoped to auth routes, and Secure in production.
 
-The repository is being developed incrementally. See [docs/ROADMAP.md](docs/ROADMAP.md) for milestones and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the initial system design.
+Configure JWT_ACCESS_SECRET to a unique random value of at least 32 characters in every deployed environment. The built-in rate limiter uses in-memory storage and must be replaced with a shared store for multi-instance deployments.
 
-## Disclaimer
-
-ClaimSphere is a portfolio engineering project, not a licensed insurance product or a substitute for legal, regulatory, actuarial, or professional claims advice. Production use would require jurisdiction-specific compliance, security review, operational controls, and integration certification.
+The dashboard still contains illustrative demo data and is not connected to live insurance systems. This is a portfolio engineering project, not a licensed insurance product; production use requires jurisdiction-specific compliance, security review, operational controls, and integration certification.
