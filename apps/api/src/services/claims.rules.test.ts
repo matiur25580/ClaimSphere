@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {canTransitionClaim,isEvidenceMetadataSafe,isLossCovered} from "./claims.rules.js";
+import {canRoleTransition,canTransitionClaim,isEvidenceMetadataSafe,isLossCovered} from "./claims.rules.js";
 describe("policy coverage rules",()=>{
  it("requires active policy and a loss date inside the effective window",()=>{
   expect(isLossCovered("active","2026-01-01","2026-12-31","2026-06-01")).toBe(true);
