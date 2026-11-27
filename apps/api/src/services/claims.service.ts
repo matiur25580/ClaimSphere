@@ -7,7 +7,6 @@ import { Membership } from "../models/membership.model.js";
 import { Policy } from "../models/policy.model.js";
 import { canRoleTransition, canTransitionClaim, isEvidenceMetadataSafe, isLossCovered } from "./claims.rules.js";
 
-type ClaimStatus = "submitted" | "triage" | "under_review" | "awaiting_documents" | "investigation" | "approved" | "rejected" | "settled" | "closed";
 export class ClaimsError extends Error {
   status: number; code: string;
   constructor(status: number, code: string, message: string) { super(message); this.status = status; this.code = code; }
@@ -116,7 +115,7 @@ export async function transitionClaim(org: string, actor: string, role: string, 
       if (["approved", "rejected"].includes(toStatus)) {
         if (!["organization_admin", "claims_manager", "finance_officer"].includes(role)) fail(403, "CLAIM_DECISION_PERMISSION_REQUIRED", "Only an authorized claims or finance reviewer can decide this claim.");
         if (String(claim.createdBy) === actor) fail(403, "SELF_REVIEW_BLOCKED", "The claim creator cannot approve or reject their own claim.");
-        if (toStatus === "rejected" && note.trim().length < 5) fail(400, "REJECTION_REASON_REQUIRED", "A rejection reason of at least five characters is required.");
+        if (note.trim().length < 5) fail(400, "DECISION_NOTE_REQUIRED", "An approval or rejection rationale of at least five characters is required.");
         claim.decision = note;
         claim.decisionBy = new Types.ObjectId(actor);
         claim.decidedAt = new Date();
@@ -197,8 +196,8 @@ export async function settleClaim(org: string, actor: string, id: string, settle
     await session.withTransaction(async () => {
       const claim = await Claim.findOne({ _id: id, organizationId: org, status: "approved" }).session(session);
       if (!claim) fail(409, "CLAIM_NOT_APPROVED", "Only an approved claim can be settled.");
-      const policy = await Policy.findOne({ _id: claim.policyId, organizationId: org }).select("coverageLimitMinor currency").session(session);
-      if (!policy || policy.currency !== claim.currency || settlementAmountMinor > policy.coverageLimitMinor) fail(400, "SETTLEMENT_LIMIT_EXCEEDED", "Settlement must use the policy currency and cannot exceed its coverage limit.");
+      const policy = await Policy.findOne({ _id: claim.policyId, organizationId: org }).select("coverageLimitMinor deductibleMinor currency").session(session);
+      if (!policy || policy.currency !== claim.currency || settlementAmountMinor > Math.max(0, policy.coverageLimitMinor - policy.deductibleMinor)) fail(400, "SETTLEMENT_LIMIT_EXCEEDED", "Settlement must use the policy currency and cannot exceed the policy limit after deductible.");
       claim.status = "settled";
       claim.settlementAmountMinor = settlementAmountMinor;
       claim.settledAt = new Date();
