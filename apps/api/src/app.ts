@@ -9,6 +9,7 @@ import {notFoundHandler} from "./middleware/not-found.js";
 import {authRouter} from "./routes/auth.routes.js";
 import {healthRouter} from "./routes/health.routes.js";
 import {organizationRouter} from "./routes/organization.routes.js";
+import {claimsRouter} from "./routes/claims.routes.js";
 const pinoHttp=pinoHttpModule as unknown as typeof pinoHttpModule.default;
 export const app=express();
 app.disable("x-powered-by");
@@ -22,5 +23,6 @@ app.get("/api/v1",(_req,res)=>res.json({data:{name:"ClaimSphere API",version:"v1
 app.use("/api/v1/health",healthRouter);
 app.use("/api/v1/auth",authRouter);
 app.use("/api/v1/organizations",organizationRouter);
+app.use("/api/v1",claimsRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
