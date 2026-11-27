@@ -21,7 +21,7 @@ This milestone introduces the first operational insurance domain APIs under `/ap
 - Claim creation, status transitions, assignment, evidence registration/review and settlement commit together with their corresponding audit event in a MongoDB transaction.
 - Claim creators cannot approve/reject their own claims.
 - Claims managers/admins can assign only active tenant members with the claims-adjuster role.
-- Finance officers/admins can settle only approved claims and settlement cannot exceed the policy coverage limit.
+- Finance officers/admins can settle only approved claims and settlement cannot exceed the policy limit after deductible.
 
 ## Evidence metadata boundary
 
