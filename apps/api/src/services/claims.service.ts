@@ -183,3 +183,15 @@ export async function settleClaim(org: string, actor: string, id: string, settle
   await appendEvent({ organizationId: org, claimId: id, actorId: actor, action: "claim_settled", fromStatus: "approved", toStatus: "settled", metadata: { settlementAmountMinor, currency: claim.currency, note } });
   return getClaim(org, id, actor, "finance_officer");
 }
+
+export async function activatePolicy(org: string, actor: string, id: string) {
+  if (!validId(id)) fail(400, "INVALID_POLICY_ID", "A valid policy identifier is required.");
+  const now = new Date();
+  const policy = await Policy.findOneAndUpdate(
+    { _id: id, organizationId: org, status: "draft", effectiveAt: { $lte: now }, expiresAt: { $gt: now } },
+    { $set: { status: "active", updatedBy: actor } },
+    { new: true, runValidators: true }
+  );
+  if (!policy) fail(409, "POLICY_NOT_ACTIVATABLE", "Only a draft policy within its effective date window can be activated.");
+  return policy;
+}
